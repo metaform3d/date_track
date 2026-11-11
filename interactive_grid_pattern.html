@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Date Tracker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom explicit grid configuration for strict 12x32 single-page display */
+        .matrix-grid {
+            display: grid;
+            grid-template-columns: repeat(32, minmax(0, 1fr));
+            grid-template-rows: repeat(12, minmax(0, 1fr));
+            gap: 2px;
+            width: 100%;
+            height: 100%;
+        }
+
+        .month-label {
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Ensure perfect circular buttons regardless of cell aspect ratios */
+        .circle-btn {
+            border-radius: 50%;
+            aspect-ratio: 1 / 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 3px;
+            user-select: none;
+            cursor: pointer;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
+        }
+
+        .circle-btn:active {
+            transform: scale(0.88);
+        }
+
+        /* Distinct Color States */
+        .state-0 {
+            background-color: #334155; /* Slate/Gray Base */
+            color: #94a3b8;
+        }
+        .state-0:hover {
+            background-color: #475569;
+            color: #f1f5f9;
+        }
+
+        .state-1 {
+            background-color: #0284c7; /* Vibrant Cyan/Sky Blue */
+            color: #ffffff;
+            box-shadow: 0 0 6px rgba(2, 132, 199, 0.6);
+            border-color: #38bdf8;
+        }
+        .state-1:hover {
+            background-color: #0369a1;
+        }
+
+        .state-2 {
+            background-color: #d97706; /* Warm Amber/Orange */
+            color: #ffffff;
+            box-shadow: 0 0 6px rgba(217, 119, 6, 0.6);
+            border-color: #fbbf24;
+        }
+        .state-2:hover {
+            background-color: #b45309;
+        }
+
+        .state-3 {
+            background-color: #059669; /* Vivid Emerald Green */
+            color: #ffffff;
+            box-shadow: 0 0 6px rgba(5, 150, 105, 0.6);
+            border-color: #34d399;
+        }
+        .state-3:hover {
+            background-color: #047857;
+        }
+    </style>
+</head>
+<body class="h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
+
+    <!-- Top Header & Dashboard -->
+    <header class="flex-none bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between z-10">
+        <div class="flex items-center gap-3">
+            <h1 id="year" class="text-xs sm:text-sm font-bold text-slate-200 tracking-wide">2000</h1>
+        </div>
+
+        <!-- State Counter Stats -->
+        <div class="flex items-center gap-2 sm:gap-4 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 text-[11px] font-mono">
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block"></span>
+                <span class="text-slate-400 hidden sm:inline">Off:</span>
+                <span id="cnt-0" class="font-bold text-slate-300">360</span>
+            </div>
+            <div class="h-3 w-[1px] bg-slate-800"></div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>
+                <span class="text-slate-400 hidden sm:inline">Sky:</span>
+                <span id="cnt-1" class="font-bold text-sky-400">0</span>
+            </div>
+            <div class="h-3 w-[1px] bg-slate-800"></div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
+                <span class="text-slate-400 hidden sm:inline">Amber:</span>
+                <span id="cnt-2" class="font-bold text-amber-400">0</span>
+            </div>
+            <div class="h-3 w-[1px] bg-slate-800"></div>
+            <div class="flex items-center gap-1.5">
+                <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
+                <span class="text-slate-400 hidden sm:inline">Emerald:</span>
+                <span id="cnt-3" class="font-bold text-emerald-400">0</span>
+            </div>
+        </div>
+
+        <!-- Global Control Buttons -->
+        <div class="flex items-center gap-2">
+            <button id="btn-random" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                Randomize
+            </button>
+            <button id="btn-reset" class="px-2.5 py-1 text-xs font-semibold rounded bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 transition">
+                Reset
+            </button>
+        </div>
+    </header>
+
+    <!-- Center Viewport Area (Strict Single-Page Fit) -->
+    <main class="flex-1 w-full h-full min-h-0 min-w-0 p-2 sm:p-4 flex flex-col items-center justify-center overflow-hidden">
+        <div class="w-full h-full max-w-full max-h-full bg-slate-900/80 rounded-xl border border-slate-800 p-2 flex flex-col overflow-hidden shadow-2xl">
+            <!-- 12x30 Matrix Container -->
+            <div id="matrix" class="matrix-grid min-h-0 min-w-0"></div>
+        </div>
+    </main>
+
+    <!-- Bottom Status Bar -->
+    <footer class="flex-none bg-slate-950 border-t border-slate-800/80 px-4 py-1 text-[11px] text-slate-400 flex justify-between items-center">
+        <span>Click any button to cycle state (Sky &rarr; Amber &rarr; Emerald &rarr; Default)</span>
+        <span id="last-click" class="font-mono text-slate-500">Ready</span>
+    </footer>
+
+    <!-- Single File Logic Script -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const MONTHS = 12;
+            const MAXDAYS = 31;
+
+            const matrixContainer = document.getElementById('matrix');
+            const yearElt = document.getElementById('year');
+            const cnt0 = document.getElementById('cnt-0');
+            const cnt1 = document.getElementById('cnt-1');
+            const cnt2 = document.getElementById('cnt-2');
+            const cnt3 = document.getElementById('cnt-3');
+            const lastClickLabel = document.getElementById('last-click');
+
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const currentYear = today.getFullYear();
+            const monthNames = ['J','F','M','A','M','J','J','A','S','O','N','D'];
+            year.textContent = currentYear;
+
+            // Color states and buttons by day index
+            const states = [];
+            const buttonElts = [];
+
+            // Generate contents of grid container
+            for (let month = 0; month < MONTHS; month++) {
+                const label = document.createElement('span');
+                label.textContent = monthNames[month];
+                label.className = `month-label text-xs font-bold`;
+                matrixContainer.appendChild(label);
+
+                const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
+                for (let c = 0; c < MAXDAYS; c++) {
+                    const colNum = c + 1;
+
+                    if (c >= daysInMonth) {
+                        const div = document.createElement('div');
+                        matrixContainer.appendChild(div);
+                    } else {
+                        const date = new Date(currentYear, month, c + 1)
+                        date.setHours(0,0,0,0);
+                        const index = buttonElts.length;
+
+                        const btn = document.createElement('button');
+                        btn.type = 'button';
+                        btn.textContent = colNum;
+                        
+                        // Click handler to cycle through states
+                        btn.addEventListener('click', () => {
+                            // Cycle between 0 -> 1 -> 2 -> 3 -> 0
+                            states[index] = (states[index] + 1) % 4;
+                            updateButtonState(index);
+                            updateStats();
+                            lastClickLabel.textContent = `${date} -- Row ${month + 1}, Col ${colNum} → State ${states[index]}`;
+                        });
+
+                        matrixContainer.appendChild(btn);
+                        buttonElts.push(btn);
+                        if (date < today) {
+                            states.push(1);
+                        } else if (date > today) {
+                            states.push(0);
+                        } else {
+                            states.push(2);
+                        }
+                        updateButtonState(states.length - 1);
+                    }
+                }
+            }
+
+            // Helper to sync CSS classes for a given button index
+            function updateButtonState(idx) {
+                const btn = buttonElts[idx];
+                const state = states[idx];
+                btn.className = `circle-btn state-${state} text-[10px] sm:text-xs font-mono font-semibold max-w-full max-h-full`;
+            }
+
+            // Update state counts display
+            function updateStats() {
+                let c0 = 0, c1 = 0, c2 = 0, c3 = 0;
+                for (const st of states) {
+                    if (st === 0) c0++;
+                    else if (st === 1) c1++;
+                    else if (st === 2) c2++;
+                    else if (st === 3) c3++;
+                }
+                cnt0.textContent = c0;
+                cnt1.textContent = c1;
+                cnt2.textContent = c2;
+                cnt3.textContent = c3;
+            }
+
+            function storeState() {
+                localStorage.setItem(`year${currentYear}`, JSON.stringify(state));
+            }
+
+            // Controls
+            document.getElementById('btn-reset').addEventListener('click', () => {
+                states.fill(0);
+                for (let i = 0; i < states.length; i++) updateButtonState(i);
+                updateStats();
+                lastClickLabel.textContent = "Reset All";
+            });
+
+            document.getElementById('btn-random').addEventListener('click', () => {
+                for (let i = 0; i < states.length; i++) {
+                    states[i] = Math.floor(Math.random() * 4);
+                    updateButtonState(i);
+                }
+                updateStats();
+                lastClickLabel.textContent = "Randomized Matrix";
+            });
+
+            // Initial stats calculation
+            updateStats();
+        });
+    </script>
+</body>
+</html>
