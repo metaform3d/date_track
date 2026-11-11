@@ -78,6 +78,14 @@
         .state-3:hover {
             background-color: #047857;
         }
+
+        .date-range1 {
+            border-color: #b90000;
+        }
+
+        .date-range2 {
+            border-color: #000000;
+        }
     </style>
 </head>
 <body class="h-screen w-screen overflow-hidden bg-slate-950 text-slate-100 flex flex-col font-sans select-none">
@@ -227,31 +235,41 @@
                         const div = document.createElement('div');
                         matrixContainer.appendChild(div);
                     } else {
+                        const index = buttonElts.length;
                         const date = new Date(currentYear, month, c + 1)
                         date.setHours(0,0,0,0);
-                        const index = buttonElts.length;
+                        let dateMode = 1;  // today
+                        if (date < today) {
+                            dateMode = 0;  // past
+                        } else if (date > today) {
+                            dateMode = 2;  // future
+                        }
 
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.textContent = colNum;
+                        if (dateMode === 2) {
+                            btn.style.pointerEvents = 'none';
+                        }
                         
                         // Click handler to cycle through states
                         btn.addEventListener('click', () => {
+                            if (dateMode === 2) {
+                                return;
+                            }
                             // Cycle between 0 -> 1 -> 2 -> 3 -> 0
                             const newValue = (getState(index) + 1) % 4;
                             setState(index, newValue);
-                            lastClickLabel.textContent = `${date} -- Row ${month + 1}, Col ${colNum} → State ${states[index]}`;
+                            lastClickLabel.textContent = `${date} -- Row ${month + 1}, Col ${colNum} → State ${newValue}`;
                         });
 
                         matrixContainer.appendChild(btn);
-                        buttonElts.push(btn);
-                        //if (date < today) {
-                        //    states.push(1);
-                        //} else if (date > today) {
-                        //    states.push(0);
-                        //} else {
-                        //   states.push(2);
-                        //}
+                        const info = {
+                            button: btn,
+                            date: date,
+                            mode: dateMode,
+                        };
+                        buttonElts.push(info);
                         updateButtonState(buttonElts.length - 1);
                     }
                 }
@@ -259,9 +277,10 @@
 
             // Helper to sync CSS classes for a given button index
             function updateButtonState(idx) {
-                const btn = buttonElts[idx];
+                const info = buttonElts[idx];
                 const state = getState(idx);
-                btn.className = `circle-btn state-${state} text-[10px] sm:text-xs font-mono font-semibold max-w-full max-h-full`;
+                const mode = info.mode === 0 ? '' : ` date-range${info.mode}`;
+                info.button.className = `circle-btn state-${state}${mode} text-[10px] sm:text-xs font-mono font-semibold max-w-full max-h-full`;
             }
 
             // Update state counts display
