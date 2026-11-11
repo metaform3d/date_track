@@ -158,10 +158,58 @@
             today.setHours(0, 0, 0, 0);
             const currentYear = today.getFullYear();
             const monthNames = ['J','F','M','A','M','J','J','A','S','O','N','D'];
-            year.textContent = currentYear;
+            yearElt.textContent = currentYear;
 
-            // Color states and buttons by day index
-            const states = [];
+            // Color states by day index, defaults to zero past end
+            // Keep synced to local storage
+            function readStates() {
+                try {
+                    const rawData = localStorage.getItem(`year${currentYear}`);
+                    if (rawData === null) {
+                        return [];
+                    }
+
+                    const parsed = JSON.parse(rawData);
+                    if (!Array.isArray(parsed)) {
+                        return [];
+                    }
+
+                    return parsed.map(item => Number(item));
+                } catch (error) {
+                    console.error(`Error reading state:`, error);
+                    return [];
+                }
+            }
+            function storeStates() {
+                localStorage.setItem(`year${currentYear}`, JSON.stringify(states));
+            }
+            const states = readStates();
+
+            function getState(index) {
+                if (index < states.length) {
+                    return states[index];
+                }
+                return 0;
+            }
+
+            function setState(index, value) {
+                if (value === 0 && index >= states.length) {
+                    return;
+                }
+                while (index >= states.length) {
+                    states.push(0);
+                }
+                states[index] = value;
+                updateButtonState(index);
+                statesChanged();
+            }
+
+            function statesChanged() {
+                updateStats();
+                storeStates();
+            }
+
+            // Buttons by day index
             const buttonElts = [];
 
             // Generate contents of grid container
@@ -190,22 +238,21 @@
                         // Click handler to cycle through states
                         btn.addEventListener('click', () => {
                             // Cycle between 0 -> 1 -> 2 -> 3 -> 0
-                            states[index] = (states[index] + 1) % 4;
-                            updateButtonState(index);
-                            updateStats();
+                            const newValue = (getState(index) + 1) % 4;
+                            setState(index, newValue);
                             lastClickLabel.textContent = `${date} -- Row ${month + 1}, Col ${colNum} → State ${states[index]}`;
                         });
 
                         matrixContainer.appendChild(btn);
                         buttonElts.push(btn);
-                        if (date < today) {
-                            states.push(1);
-                        } else if (date > today) {
-                            states.push(0);
-                        } else {
-                            states.push(2);
-                        }
-                        updateButtonState(states.length - 1);
+                        //if (date < today) {
+                        //    states.push(1);
+                        //} else if (date > today) {
+                        //    states.push(0);
+                        //} else {
+                        //   states.push(2);
+                        //}
+                        updateButtonState(buttonElts.length - 1);
                     }
                 }
             }
@@ -213,14 +260,15 @@
             // Helper to sync CSS classes for a given button index
             function updateButtonState(idx) {
                 const btn = buttonElts[idx];
-                const state = states[idx];
+                const state = getState(idx);
                 btn.className = `circle-btn state-${state} text-[10px] sm:text-xs font-mono font-semibold max-w-full max-h-full`;
             }
 
             // Update state counts display
             function updateStats() {
                 let c0 = 0, c1 = 0, c2 = 0, c3 = 0;
-                for (const st of states) {
+                for (let i = 0; i < buttonElts.length; i++) {
+                    const st = getState(i);
                     if (st === 0) c0++;
                     else if (st === 1) c1++;
                     else if (st === 2) c2++;
@@ -232,25 +280,28 @@
                 cnt3.textContent = c3;
             }
 
-            function storeState() {
-                localStorage.setItem(`year${currentYear}`, JSON.stringify(state));
-            }
-
             // Controls
             document.getElementById('btn-reset').addEventListener('click', () => {
-                states.fill(0);
-                for (let i = 0; i < states.length; i++) updateButtonState(i);
-                updateStats();
-                lastClickLabel.textContent = "Reset All";
+                const confirm = window.confirm('Are you sure?');
+                if (confirm) {
+                    states.length = 0;
+                    for (let i = 0; i < buttonElts.length; i++) updateButtonState(i);
+                    statesChanged();
+                    lastClickLabel.textContent = "Reset All";
+                }
             });
 
             document.getElementById('btn-random').addEventListener('click', () => {
-                for (let i = 0; i < states.length; i++) {
-                    states[i] = Math.floor(Math.random() * 4);
-                    updateButtonState(i);
+                const confirm = window.confirm('Are you sure?');
+                if (confirm) {
+                    states.length = 0;
+                    for (let i = 0; i < buttonElts.length; i++) {
+                        states.push(Math.floor(Math.random() * 4));
+                        updateButtonState(i);
+                    }
+                    statesChanged();
+                    lastClickLabel.textContent = "Randomized Matrix";
                 }
-                updateStats();
-                lastClickLabel.textContent = "Randomized Matrix";
             });
 
             // Initial stats calculation
