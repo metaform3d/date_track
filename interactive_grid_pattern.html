@@ -84,7 +84,29 @@
         }
 
         .date-range2 {
+            background-color: #202835;
+            color: #8f8f8f;
             border-color: #000000;
+        }
+
+        .panel {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 300px;
+            padding: 20px;
+            background: #1a1912;
+            border: 2px solid #3f5bda;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+        }
+
+        .hiddenPanel {
+            display: none;
+        }
+
+        .config-text {
+            background-color: #202835;
         }
     </style>
 </head>
@@ -101,32 +123,32 @@
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block"></span>
                 <span class="text-slate-400 hidden sm:inline">Off:</span>
-                <span id="cnt-0" class="font-bold text-slate-300">360</span>
+                <span id="count0" class="font-bold text-slate-300">0</span>
             </div>
             <div class="h-3 w-[1px] bg-slate-800"></div>
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>
                 <span class="text-slate-400 hidden sm:inline">Sky:</span>
-                <span id="cnt-1" class="font-bold text-sky-400">0</span>
+                <span id="count1" class="font-bold text-sky-400">0</span>
             </div>
             <div class="h-3 w-[1px] bg-slate-800"></div>
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
                 <span class="text-slate-400 hidden sm:inline">Amber:</span>
-                <span id="cnt-2" class="font-bold text-amber-400">0</span>
+                <span id="count2" class="font-bold text-amber-400">0</span>
             </div>
             <div class="h-3 w-[1px] bg-slate-800"></div>
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
                 <span class="text-slate-400 hidden sm:inline">Emerald:</span>
-                <span id="cnt-3" class="font-bold text-emerald-400">0</span>
+                <span id="count3" class="font-bold text-emerald-400">0</span>
             </div>
         </div>
 
         <!-- Global Control Buttons -->
         <div class="flex items-center gap-2">
-            <button id="btn-random" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                Randomize
+            <button id="btn-config" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                Configure
             </button>
             <button id="btn-reset" class="px-2.5 py-1 text-xs font-semibold rounded bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 transition">
                 Reset
@@ -137,7 +159,6 @@
     <!-- Center Viewport Area (Strict Single-Page Fit) -->
     <main class="flex-1 w-full h-full min-h-0 min-w-0 p-2 sm:p-4 flex flex-col items-center justify-center overflow-hidden">
         <div class="w-full h-full max-w-full max-h-full bg-slate-900/80 rounded-xl border border-slate-800 p-2 flex flex-col overflow-hidden shadow-2xl">
-            <!-- 12x30 Matrix Container -->
             <div id="matrix" class="matrix-grid min-h-0 min-w-0"></div>
         </div>
     </main>
@@ -148,6 +169,29 @@
         <span id="last-click" class="font-mono text-slate-500">Ready</span>
     </footer>
 
+    <div id="configPanel" class="panel hiddenPanel">
+        <h2 class="font-bold">Configuration</h2>
+
+        <div class="flex flex-col gap-4">
+            <div class="flex flex-row flex-1">
+                <label for="configAction1" class="text-sm font-medium mb-1">Sky Color</label>
+                <input type="text" id="configAction1" class="config-text">
+            </div>
+            <div class="flex flex-row flex-1">
+                <label for="configAction2" class="text-sm font-medium mb-1">Amber Color</label>
+                <input type="text" id="configAction2" class="config-text">
+            </div>
+            <div class="flex flex-row flex-1">
+                <label for="configAction3" class="text-sm font-medium mb-1">Green Color</label>
+                <input type="text" id="configAction3" class="config-text">
+            </div>
+        </div>
+
+        <div class="mt-2">
+            <button id="configSave">Save</button>
+        </div>
+    </div>
+
     <!-- Single File Logic Script -->
     <script>
         document.addEventListener('DOMContentLoaded', () => {
@@ -155,18 +199,13 @@
             const MAXDAYS = 31;
 
             const matrixContainer = document.getElementById('matrix');
-            const yearElt = document.getElementById('year');
-            const cnt0 = document.getElementById('cnt-0');
-            const cnt1 = document.getElementById('cnt-1');
-            const cnt2 = document.getElementById('cnt-2');
-            const cnt3 = document.getElementById('cnt-3');
             const lastClickLabel = document.getElementById('last-click');
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
             const currentYear = today.getFullYear();
             const monthNames = ['J','F','M','A','M','J','J','A','S','O','N','D'];
-            yearElt.textContent = currentYear;
+            year.textContent = currentYear;
 
             // Color states by day index, defaults to zero past end
             // Keep synced to local storage
@@ -293,10 +332,10 @@
                     else if (st === 2) c2++;
                     else if (st === 3) c3++;
                 }
-                cnt0.textContent = c0;
-                cnt1.textContent = c1;
-                cnt2.textContent = c2;
-                cnt3.textContent = c3;
+                count0.textContent = c0;
+                count1.textContent = c1;
+                count2.textContent = c2;
+                count3.textContent = c3;
             }
 
             // Controls
@@ -310,17 +349,16 @@
                 }
             });
 
-            document.getElementById('btn-random').addEventListener('click', () => {
-                const confirm = window.confirm('Are you sure?');
-                if (confirm) {
-                    states.length = 0;
-                    for (let i = 0; i < buttonElts.length; i++) {
-                        states.push(Math.floor(Math.random() * 4));
-                        updateButtonState(i);
-                    }
-                    statesChanged();
-                    lastClickLabel.textContent = "Randomized Matrix";
+            document.getElementById('btn-config').addEventListener('click', () => {
+                if (configPanel.classList.contains('hiddenPanel')) {
+                    configPanel.classList.remove('hiddenPanel');
+                } else {
+                    configPanel.classList.add('hiddenPanel');
                 }
+            });
+
+            configSave.addEventListener('click', () => {
+                configPanel.classList.add('hiddenPanel');
             });
 
             // Initial stats calculation
