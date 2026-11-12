@@ -159,19 +159,25 @@
             </div>
         </div>
 
-        <!-- Global Control Buttons -->
+        <!-- Global Control Buttons | U+1F504 flip | U+2630 config | U+2327 erase -->
         <div class="flex items-center gap-2">
-            <button id="btn-flip" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                Flip
+            <button id="btn-flip" aria-label="Flip" title="Flip"
+                class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                <span class="sm:hidden">&#x21BB;</span>
+                <span class="hidden sm:inline">Flip</span>
             </button>
-            <button id="btn-config" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
-                Configure
+            <button id="btn-config" aria-label="Configure" title="Configure"
+                class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                <span class="sm:hidden">&#x2630;</span>
+                <span class="hidden sm:inline">Configure</span>
             </button>
-            <button id="btn-reset" class="px-2.5 py-1 text-xs font-semibold rounded bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 transition">
-                Reset
+            <button id="btn-reset" aria-label="Reset" title="Reset"
+                class="px-2.5 py-1 text-xs font-semibold rounded bg-rose-950/50 hover:bg-rose-900/60 text-rose-300 border border-rose-800/60 transition">
+                <span class="sm:hidden">&#x2327;</span>
+                <span class="hidden sm:inline">Reset</span>
             </button>
         </div>
-    </header>
+        </header>
 
     <!-- Center Viewport Area (Strict Single-Page Fit) -->
     <main class="flex-1 w-full h-full min-h-0 min-w-0 p-2 sm:p-4 flex flex-col items-center justify-center overflow-hidden">
@@ -403,11 +409,12 @@
                     if (st !== -1) active = true;
                     if (active) {
                         n++;
+                        for (let j = 0; j < run.length; j++) {
+                            if (j != st) run[j] = 0;
+                        }
                         if (st >= 0) {
                             count[st]++;
-                            const last = run[st];
-                            run = [0, 0, 0];
-                            run[st] = last + 1;
+                            run[st]++;
                             if (run[st] > max[st]) max[st] = run[st];
                         }
                     }
