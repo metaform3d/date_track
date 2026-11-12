@@ -6,14 +6,19 @@
     <title>Date Tracker</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom explicit grid configuration for strict 12x32 single-page display */
         .matrix-grid {
             display: grid;
-            grid-template-columns: repeat(32, minmax(0, 1fr));
-            grid-template-rows: repeat(12, minmax(0, 1fr));
             gap: 2px;
             width: 100%;
             height: 100%;
+        }
+        .matrix-grid-H {
+            grid-template-columns: repeat(32, minmax(0, 1fr));
+            grid-template-rows: repeat(12, minmax(0, 1fr));
+        }
+        .matrix-grid-V {
+            grid-template-rows: repeat(32, minmax(0, 1fr));
+            grid-template-columns: repeat(12, minmax(0, 1fr));
         }
 
         .month-label {
@@ -22,7 +27,6 @@
             justify-content: center;
         }
 
-        /* Ensure perfect circular buttons regardless of cell aspect ratios */
         .circle-btn {
             border-radius: 50%;
             aspect-ratio: 1 / 1;
@@ -148,6 +152,9 @@
 
         <!-- Global Control Buttons -->
         <div class="flex items-center gap-2">
+            <button id="btn-flip" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
+                Flip
+            </button>
             <button id="btn-config" class="px-2.5 py-1 text-xs font-semibold rounded bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition">
                 Configure
             </button>
@@ -203,6 +210,7 @@
             const monthNames = ['J','F','M','A','M','J','J','A','S','O','N','D'];
             year.textContent = currentYear;
 
+            // Persistent configuration state
             function readActions() {
                 try {
                     const rawData = localStorage.getItem('configActions');
@@ -225,6 +233,7 @@
                 localStorage.setItem('configActions', JSON.stringify(actions));
             }
             const actions = readActions() ?? ['Blue', 'Amber', 'Green'];
+            let isVertical = false;
 
             // Color states by day index, defaults to zero past end
             // Keep synced to local storage
@@ -275,15 +284,17 @@
                 storeStates();
             }
 
-            // Buttons by day index
+            // Buttons by day index, mathing states
             const buttonElts = [];
+            // matrix elements as 32x12 horizontal array
+            const matrixElts = [];
 
-            // Generate contents of grid container
+            // Generate buttons and matrix elements
             for (let month = 0; month < MONTHS; month++) {
                 const label = document.createElement('span');
                 label.textContent = monthNames[month];
                 label.className = `month-label text-xs font-bold`;
-                matrixContainer.appendChild(label);
+                matrixElts.push(label);
 
                 const daysInMonth = new Date(currentYear, month + 1, 0).getDate();
                 for (let c = 0; c < MAXDAYS; c++) {
@@ -291,7 +302,7 @@
 
                     if (c >= daysInMonth) {
                         const div = document.createElement('div');
-                        matrixContainer.appendChild(div);
+                        matrixElts.push(div);
                     } else {
                         const index = buttonElts.length;
                         const date = new Date(currentYear, month, c + 1)
@@ -333,13 +344,34 @@
                             inputHelpLabel.textContent = ``;
                         });
                         
-                        matrixContainer.appendChild(btn);
+                        matrixElts.push(btn);
                         const info = {
                             button: btn,
                             mode: dateMode,
                         };
                         buttonElts.push(info);
                         updateButtonState(buttonElts.length - 1);
+                    }
+                }
+            }
+
+            // Place elements into matrix based on orientation
+            function populateMatrix() {
+                matrixContainer.className = 'matrix-grid min-h-0 min-w-0';
+                if (isVertical) {
+                    matrixContainer.classList.add('matrix-grid-V');
+                    matrixContainer.replaceChildren();
+                    let offset = 0;
+                    for (let i = 0; i < matrixElts.length; i++) {
+                        const mod12 = i % 12;
+                        matrixContainer.appendChild(matrixElts[mod12 * 32 + offset]);
+                        if (mod12 === 11) offset++;
+                    }
+                } else {
+                    matrixContainer.classList.add('matrix-grid-H');
+                    matrixContainer.replaceChildren();
+                    for (const elt of matrixElts) {
+                        matrixContainer.appendChild(elt);
                     }
                 }
             }
@@ -371,28 +403,46 @@
                         }
                     }
                 }
-                function compose(n, count, max) {
+                function summary() {
                     if (n === 0) return '--';
-                    const frac = (count * 100) / n;
-                    const percent = Math.round(frac);
-                    return `${percent}% (${max})`;
+                    const sum = count[0] + count[1] + count[2];
+                    return `${sum}/${n}`;
                 }
                 function readout(i) {
                     if (n === 0) return '--';
-                    return compose(n, count[i], max[i]);
+                    const frac = (count[i] * 100) / n;
+                    const percent = Math.round(frac);
+                    return `${percent}% (${max[i]})`;
                 }
                 statAction1.textContent = `${actions[0]}:`;
                 statAction2.textContent = `${actions[1]}:`;
                 statAction3.textContent = `${actions[2]}:`;
-                count0.textContent = compose(n, count[0] + count[1] + count[2], n);
+                count0.textContent = summary();
                 count1.textContent = readout(0);
                 count2.textContent = readout(1);
                 count3.textContent = readout(2);
             }
 
             // Controls
+            function helpString(id, stringF) {
+                document.getElementById(id).addEventListener('mouseenter', () => {
+                    inputHelpLabel.textContent = stringF();
+                });
+                document.getElementById(id).addEventListener('mouseleave', () => {
+                    inputHelpLabel.textContent = ``;
+                });
+            }
+
+            document.getElementById('btn-flip').addEventListener('click', () => {
+                isVertical = !isVertical;
+                populateMatrix();
+            });
+            helpString('btn-flip', () => {
+                 return 'Flip orientation between horizontal and vertical.'; 
+            })
+
             document.getElementById('btn-reset').addEventListener('click', () => {
-                const confirm = window.confirm('Are you sure?');
+                const confirm = window.confirm('Reset all days to an unset state?');
                 if (confirm) {
                     states.length = 0;
                     for (let i = 0; i < buttonElts.length; i++) updateButtonState(i);
@@ -400,11 +450,8 @@
                     lastChangeLabel.textContent = `All days of the year are now unset.`;
                 }
             });
-            document.getElementById('btn-reset').addEventListener('mouseenter', () => {
-                inputHelpLabel.textContent = `Click to reset all days to unset.`;
-            });
-            document.getElementById('btn-reset').addEventListener('mouseleave', () => {
-                inputHelpLabel.textContent = ``;
+            helpString('btn-reset', () => {
+                return `Click to reset all days to unset.`;
             });
 
             document.getElementById('btn-config').addEventListener('click', () => {
@@ -417,15 +464,11 @@
                     configPanel.classList.add('hiddenPanel');
                 }
             });
-            document.getElementById('btn-config').addEventListener('mouseenter', () => {
+            helpString('btn-config', () => {
                 if (configPanel.classList.contains('hiddenPanel')) {
-                    inputHelpLabel.textContent = `Click to configure the goal names.`;
-                } else {
-                    inputHelpLabel.textContent = `Click to close configuration panel without saving.`;
+                    return `Click to configure the goal names.`;
                 }
-            });
-            document.getElementById('btn-config').addEventListener('mouseleave', () => {
-                inputHelpLabel.textContent = ``;
+                return `Click to close configuration panel without saving.`;
             });
 
             configSave.addEventListener('click', () => {
@@ -438,7 +481,8 @@
                 updateStats();
             });
 
-            // Initial stats calculation
+            // Initial setup
+            populateMatrix();
             updateStats();
         });
     </script>
