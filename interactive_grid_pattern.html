@@ -17,6 +17,7 @@
         }
 
         .month-label {
+            display: flex;
             align-items: center;
             justify-content: center;
         }
@@ -122,25 +123,25 @@
         <div class="flex items-center gap-2 sm:gap-4 bg-slate-950 px-3 py-1 rounded-lg border border-slate-800 text-[11px] font-mono">
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-slate-600 inline-block"></span>
-                <span class="text-slate-400 hidden sm:inline">Off:</span>
+                <span class="text-slate-400 hidden sm:inline">Days:</span>
                 <span id="count0" class="font-bold text-slate-300">0</span>
             </div>
             <div class="h-3 w-[1px] bg-slate-800"></div>
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-sky-500 inline-block"></span>
-                <span class="text-slate-400 hidden sm:inline">Sky:</span>
+                <span id="statAction1" class="text-slate-400 hidden sm:inline">X:</span>
                 <span id="count1" class="font-bold text-sky-400">0</span>
             </div>
             <div class="h-3 w-[1px] bg-slate-800"></div>
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span>
-                <span class="text-slate-400 hidden sm:inline">Amber:</span>
+                <span id="statAction2" class="text-slate-400 hidden sm:inline">Y:</span>
                 <span id="count2" class="font-bold text-amber-400">0</span>
             </div>
             <div class="h-3 w-[1px] bg-slate-800"></div>
             <div class="flex items-center gap-1.5">
                 <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block"></span>
-                <span class="text-slate-400 hidden sm:inline">Emerald:</span>
+                <span id="statAction3" class="text-slate-400 hidden sm:inline">Z:</span>
                 <span id="count3" class="font-bold text-emerald-400">0</span>
             </div>
         </div>
@@ -170,24 +171,18 @@
     </footer>
 
     <div id="configPanel" class="panel hiddenPanel">
-        <h2 class="font-bold">Configuration</h2>
+        <div class="grid grid-cols-[auto_1fr] items-center gap-x-4 gap-y-4">
+           <label for="configAction1" class="text-sm font-medium">Blue</label>
+           <input type="text" id="configAction1" class="config-text w-full">
 
-        <div class="flex flex-col gap-4">
-            <div class="flex flex-row flex-1">
-                <label for="configAction1" class="text-sm font-medium mb-1">Sky Color</label>
-                <input type="text" id="configAction1" class="config-text">
-            </div>
-            <div class="flex flex-row flex-1">
-                <label for="configAction2" class="text-sm font-medium mb-1">Amber Color</label>
-                <input type="text" id="configAction2" class="config-text">
-            </div>
-            <div class="flex flex-row flex-1">
-                <label for="configAction3" class="text-sm font-medium mb-1">Green Color</label>
-                <input type="text" id="configAction3" class="config-text">
-            </div>
+           <label for="configAction2" class="text-sm font-medium">Amber</label>
+           <input type="text" id="configAction2" class="config-text w-full">
+
+           <label for="configAction3" class="text-sm font-medium">Green</label>
+           <input type="text" id="configAction3" class="config-text w-full">
         </div>
 
-        <div class="mt-2">
+        <div class="mt-4 flex justify-end">
             <button id="configSave">Save</button>
         </div>
     </div>
@@ -206,6 +201,29 @@
             const currentYear = today.getFullYear();
             const monthNames = ['J','F','M','A','M','J','J','A','S','O','N','D'];
             year.textContent = currentYear;
+
+            function readActions() {
+                try {
+                    const rawData = localStorage.getItem('configActions');
+                    if (rawData === null) {
+                        return null;
+                    }
+
+                    const parsed = JSON.parse(rawData);
+                    if (!Array.isArray(parsed)) {
+                        return null;
+                    }
+
+                    return parsed;
+                } catch (error) {
+                    console.error(`Error reading actions:`, error);
+                    return null;
+                }
+            }
+            function storeActions() {
+                localStorage.setItem('configActions', JSON.stringify(actions));
+            }
+            const actions = readActions() ?? ['Blue', 'Amber', 'Green'];
 
             // Color states by day index, defaults to zero past end
             // Keep synced to local storage
@@ -324,18 +342,40 @@
 
             // Update state counts display
             function updateStats() {
-                let c0 = 0, c1 = 0, c2 = 0, c3 = 0;
+                let active = false, n = 0;
+                let count = [0, 0, 0], run = [0, 0, 0], max = [0, 0, 0];
                 for (let i = 0; i < buttonElts.length; i++) {
-                    const st = getState(i);
-                    if (st === 0) c0++;
-                    else if (st === 1) c1++;
-                    else if (st === 2) c2++;
-                    else if (st === 3) c3++;
+                    if (buttonElts[i].mode === 2) break;
+                    const st = getState(i) - 1;
+                    if (st !== -1) active = true;
+                    if (active) {
+                        n++;
+                        if (st >= 0) {
+                            count[st]++;
+                            const last = run[st];
+                            run = [0, 0, 0];
+                            run[st] = last + 1;
+                            if (run[st] > max[st]) max[st] = run[st];
+                        }
+                    }
                 }
-                count0.textContent = c0;
-                count1.textContent = c1;
-                count2.textContent = c2;
-                count3.textContent = c3;
+                function compose(n, count, max) {
+                    if (n === 0) return '--';
+                    const frac = (count * 100) / n;
+                    const percent = Math.round(frac);
+                    return `${percent}% (${max})`;
+                }
+                function readout(i) {
+                    if (n === 0) return '--';
+                    return compose(n, count[i], max[i]);
+                }
+                statAction1.textContent = `${actions[0]}:`;
+                statAction2.textContent = `${actions[1]}:`;
+                statAction3.textContent = `${actions[2]}:`;
+                count0.textContent = compose(n, count[0] + count[1] + count[2], n);
+                count1.textContent = readout(0);
+                count2.textContent = readout(1);
+                count3.textContent = readout(2);
             }
 
             // Controls
@@ -351,6 +391,9 @@
 
             document.getElementById('btn-config').addEventListener('click', () => {
                 if (configPanel.classList.contains('hiddenPanel')) {
+                    configAction1.value = actions[0];
+                    configAction2.value = actions[1];
+                    configAction3.value = actions[2];
                     configPanel.classList.remove('hiddenPanel');
                 } else {
                     configPanel.classList.add('hiddenPanel');
@@ -359,6 +402,11 @@
 
             configSave.addEventListener('click', () => {
                 configPanel.classList.add('hiddenPanel');
+                actions[0] = configAction1.value;
+                actions[1] = configAction2.value;
+                actions[2] = configAction3.value;
+                storeActions();
+                updateStats();
             });
 
             // Initial stats calculation
