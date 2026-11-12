@@ -166,7 +166,7 @@
 
     <!-- Bottom Status Bar -->
     <footer class="flex-none bg-slate-950 border-t border-slate-800/80 px-4 py-1 text-[11px] text-slate-400 flex justify-between items-center">
-        <span>Click any button to cycle state (Sky &rarr; Amber &rarr; Emerald &rarr; Default)</span>
+        <span id="input-help">Click any button to cycle state</span>
         <span id="last-click" class="font-mono text-slate-500">Ready</span>
     </footer>
 
@@ -194,7 +194,8 @@
             const MAXDAYS = 31;
 
             const matrixContainer = document.getElementById('matrix');
-            const lastClickLabel = document.getElementById('last-click');
+            const inputHelpLabel = document.getElementById('input-help');
+            const lastChangeLabel = document.getElementById('last-click');
 
             const today = new Date();
             today.setHours(0, 0, 0, 0);
@@ -294,7 +295,12 @@
                     } else {
                         const index = buttonElts.length;
                         const date = new Date(currentYear, month, c + 1)
-                        date.setHours(0,0,0,0);
+                        date.setHours(0, 0, 0, 0);
+                        const dateString = date.toLocaleDateString('en-US', {
+                            year: 'numeric',
+                            month: 'long',
+                            day: 'numeric'
+                        });
                         let dateMode = 1;  // today
                         if (date < today) {
                             dateMode = 0;  // past
@@ -311,19 +317,25 @@
                         
                         // Click handler to cycle through states
                         btn.addEventListener('click', () => {
-                            if (dateMode === 2) {
-                                return;
-                            }
-                            // Cycle between 0 -> 1 -> 2 -> 3 -> 0
+                            if (dateMode === 2) return;
+
                             const newValue = (getState(index) + 1) % 4;
                             setState(index, newValue);
-                            lastClickLabel.textContent = `${date} -- Row ${month + 1}, Col ${colNum} → State ${newValue}`;
+                            const result = newValue === 0 ? 'unset' : actions[newValue - 1];
+                            lastChangeLabel.textContent = `${dateString} is now ${result}`;
                         });
-
+                        
+                        btn.addEventListener('mouseenter', () => {
+                            if (dateMode === 2) return;
+                            inputHelpLabel.textContent = `Click to change ${dateString} state`;
+                        });
+                        btn.addEventListener('mouseleave', () => {
+                            inputHelpLabel.textContent = ``;
+                        });
+                        
                         matrixContainer.appendChild(btn);
                         const info = {
                             button: btn,
-                            date: date,
                             mode: dateMode,
                         };
                         buttonElts.push(info);
@@ -385,8 +397,14 @@
                     states.length = 0;
                     for (let i = 0; i < buttonElts.length; i++) updateButtonState(i);
                     statesChanged();
-                    lastClickLabel.textContent = "Reset All";
+                    lastChangeLabel.textContent = `All days of the year are now unset.`;
                 }
+            });
+            document.getElementById('btn-reset').addEventListener('mouseenter', () => {
+                inputHelpLabel.textContent = `Click to reset all days to unset.`;
+            });
+            document.getElementById('btn-reset').addEventListener('mouseleave', () => {
+                inputHelpLabel.textContent = ``;
             });
 
             document.getElementById('btn-config').addEventListener('click', () => {
@@ -399,12 +417,23 @@
                     configPanel.classList.add('hiddenPanel');
                 }
             });
+            document.getElementById('btn-config').addEventListener('mouseenter', () => {
+                if (configPanel.classList.contains('hiddenPanel')) {
+                    inputHelpLabel.textContent = `Click to configure the goal names.`;
+                } else {
+                    inputHelpLabel.textContent = `Click to close configuration panel without saving.`;
+                }
+            });
+            document.getElementById('btn-config').addEventListener('mouseleave', () => {
+                inputHelpLabel.textContent = ``;
+            });
 
             configSave.addEventListener('click', () => {
                 configPanel.classList.add('hiddenPanel');
                 actions[0] = configAction1.value;
                 actions[1] = configAction2.value;
                 actions[2] = configAction3.value;
+                lastChangeLabel.textContent = `Goal names changed to ${actions[0]}, ${actions[1]}, and ${actions[2]}.`;
                 storeActions();
                 updateStats();
             });
